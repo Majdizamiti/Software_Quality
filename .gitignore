@@ -3,6 +3,8 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+springz.app.jwtSecret
+springz.app.jwtSecret
 
 ### STS ###
 .apt_generated

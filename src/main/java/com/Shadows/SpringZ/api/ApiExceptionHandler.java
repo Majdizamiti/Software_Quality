@@ -37,6 +37,14 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Invalid request body", request.getRequestURI());
     }
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException ex,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", request.getRequestURI());
+    }
+
     private static ResponseEntity<ApiErrorResponse> error(
             HttpStatus status,
             String message,

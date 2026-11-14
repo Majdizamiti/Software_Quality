@@ -69,6 +69,15 @@ public class JwtUtils {
     }
 
     private Key signingKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 64) {
+            byte[] padded = new byte[64];
+            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
+            for (int i = keyBytes.length; i < 64; i++) {
+                padded[i] = (byte) ('0' + (i % 10));
+            }
+            return Keys.hmacShaKeyFor(padded);
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
