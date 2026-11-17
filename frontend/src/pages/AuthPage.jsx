@@ -36,17 +36,17 @@ export default function AuthPage() {
         <form onSubmit={submit}>
           {mode === 'signup' && (
             <div className="field">
-              <label>Name</label>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+              <label htmlFor="name">Name</label>
+              <input id="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             </div>
           )}
           <div className="field">
-            <label>Email</label>
-            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
           </div>
           <div className="field">
-            <label>Password</label>
-            <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
           </div>
           <div className="buttons">
             <button type="submit">{mode === 'signin' ? 'Sign in' : 'Sign up'}</button>
