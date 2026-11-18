@@ -16,6 +16,8 @@ import java.util.List;
  */
 public class UserDetailsImpl implements UserDetails {
 
+    private static final long serialVersionUID = 1L;
+
     private final Long id;
     private final String email;
     private final String password;
