@@ -14,7 +14,31 @@ Ce document décrit la mise en œuvre, l'exécution et les résultats réels des
 
 ---
 
-## 2. Configuration du Test de Charge ([performance/k6-load-test.js](file:///C:/ing5/test/hackathon_Africana/performance/k6-load-test.js))
+## 📈 2. Graphique en Colonnes des Résultats (Column Chart)
+
+### Graphique A : Temps de Réponse Obtenus vs Seuil Maximal ISO 25010 (SLA)
+
+```mermaid
+xychart-beta
+    title "Temps de Reponse API (ms) vs Seuil Maximal ISO 25010 (500ms)"
+    x-axis ["Moyenne (3.26ms)", "Mediane (3.03ms)", "Percentile p90 (4.85ms)", "Percentile p95 (5.43ms)", "Seuil Max ISO (500ms)"]
+    y-axis "Temps de reponse en millisecondes (ms)" 0 --> 500
+    bar [3.26, 3.03, 4.85, 5.43, 500]
+```
+
+### Graphique B : Taux de Réussite des Requêtes et Assertions (%)
+
+```mermaid
+xychart-beta
+    title "Taux de Reussite des Requetes HTTP & Assertions (%)"
+    x-axis ["Assertions Reussies", "Requetes HTTP Valides", "Taux d'Erreur HTTP"]
+    y-axis "Pourcentage (%)" 0 --> 100
+    bar [100, 100, 0]
+```
+
+---
+
+## 3. Configuration du Test de Charge ([performance/k6-load-test.js](file:///C:/ing5/test/hackathon_Africana/performance/k6-load-test.js))
 
 ### Profil de Montée en Charge (Ramp-up Stages)
 * **0 à 5s :** Montée progressive jusqu'à 5 utilisateurs virtuels (VUs).
@@ -31,7 +55,7 @@ thresholds: {
 
 ---
 
-## 📋 3. Cahier de Tests de Performance k6 (Tableau Normalisé)
+## 📋 4. Cahier de Tests de Performance k6 (Tableau Normalisé)
 
 Issu directement du résultat d'exécution réel de la commande `k6 run performance/k6-load-test.js` :
 
@@ -44,7 +68,7 @@ Issu directement du résultat d'exécution réel de la commande `k6 run performa
 
 ---
 
-## 📊 4. Rapport d'Exécution Réel Grafana k6
+## 📊 5. Rapport d'Exécution Réel Grafana k6
 
 ```text
   █ THRESHOLDS 
@@ -89,7 +113,7 @@ default ✓ [======================================] 00/20 VUs  20s
 
 ---
 
-## 5. Synthèse de Conformité ISO/IEC 25010 (Efficacité de Performance)
+## 6. Synthèse de Conformité ISO/IEC 25010 (Efficacité de Performance)
 
 * **Débit Moyen (Throughput) :** $36.62\text{ req/sec}$ (750 requêtes HTTP traitées en 20.5 secondes).
 * **Temps de Réponse Moyen :** $3.26\text{ ms}$ (Moyenne ultra-rapide).
