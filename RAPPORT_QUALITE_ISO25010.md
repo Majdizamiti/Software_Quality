@@ -176,14 +176,90 @@ graph BT
 
 ---
 
-## 5. Bilan Global des Résultats d'Exécution
+## 5. Bilan Global des Résultats d'Exécution & Captures de Console
+
+### 🟢 Capture Console 1 : Tests JUnit 5 & Intégration Maven (`BUILD SUCCESS`)
 
 ```text
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.Shadows.SpringZ.api.AuthControllerUnitTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.908 s
+[INFO] Running com.Shadows.SpringZ.integration.AuthControllerIntegrationTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.61 s
+[INFO] Running com.Shadows.SpringZ.integration.CategoryApiControllerIntegrationTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.426 s
+[INFO] Running com.Shadows.SpringZ.security.JwtUtilsTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s
+[INFO] Running com.Shadows.SpringZ.service.CategoryServiceImplTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.101 s
+[INFO] Running com.Shadows.SpringZ.service.CustomerServiceImplTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.083 s
+[INFO] Running com.Shadows.SpringZ.service.ProductServiceImplTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.079 s
+[INFO] Running com.Shadows.SpringZ.service.UserServiceImplTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s
+[INFO] 
 [INFO] Results:
+[INFO] 
 [INFO] Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
+```
+
+---
+
+### 🟢 Capture Console 2 : Scan SAST SonarQube (`ANALYSIS SUCCESSFUL`)
+
+```text
+[INFO] --- sonar:5.0.0.4389:sonar (default-cli) @ SpringZ ---
+[INFO] Communicating with SonarQube Server 26.11.0.134175
+[INFO] Starting SonarScanner Engine...
+[INFO] Project key: SpringZ
+[INFO] 74 files indexed (65 main Java files, 8 test Java files, 1 XML file)
+[INFO] Sensor JavaSensor [java] (done) | time=3053ms
+[INFO] Sensor JaCoCo XML Report Importer [jacoco] (done) | time=146ms
+[INFO] Sensor SurefireSensor [java] (done) | time=105ms
+[INFO] Sensor TextAndSecretsSensor [text] (done) | time=1215ms
+[INFO] 74/74 source files have been analyzed for text and secrets.
+[INFO] Analysis report uploaded in 218ms
 [INFO] ANALYSIS SUCCESSFUL, results at: http://localhost:9000/dashboard?id=SpringZ
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+```
+
+---
+
+### 🟢 Capture Console 3 : Test de Charge Grafana k6 (`100% SUCCESS`)
+
+```text
+  █ THRESHOLDS 
+
+    http_req_duration
+    ✓ 'p(95)<500' p(95)=5.43ms
+
+    http_req_failed
+    ✓ 'rate<0.05' rate=0.00%
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1500    73.252538/s
+    checks_succeeded...: 100.00% 1500 out of 1500
+    checks_failed......: 0.00%   0 out of 1500
+
+    ✓ root status is 200
+    ✓ root response time < 500ms
+    ✓ health status is 200
+    ✓ health response time < 500ms
+
+    HTTP
+    http_req_duration..............: avg=3.26ms   min=0s       med=3.03ms   max=159.1ms  p(90)=4.85ms   p(95)=5.43ms  
+    http_req_failed................: 0.00%  0 out of 750
+    http_reqs......................: 750    36.626269/s
 ```
 
 ---
