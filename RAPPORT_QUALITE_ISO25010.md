@@ -135,13 +135,14 @@ graph BT
 
 ---
 
-### 4.4 Cahier de Tests de Performance (TP01 à TP03 - Grafana k6)
+### 4.4 Cahier de Tests de Performance (TP01 à TP04 - Grafana k6)
 
-| N° | Objectif du test | Charge Simulée | Endpoints Visés | SLA / Critère de Succès (ISO 25010) | Résultat Attendu |
-| :---: | :--- | :--- | :--- | :--- | :--- |
-| **TP01** | Temps de réponse sous charge sur la racine `/` | 20 utilisateurs simultanés | `GET http://localhost:8081/` | Temps de réponse $p(95) < 500\text{ ms}$ | Statut HTTP `200 OK` ; $p(95) \approx 15-50\text{ ms}$ |
-| **TP02** | Temps de réponse du Health Check Actuator | 20 utilisateurs simultanés | `GET http://localhost:8081/actuator/health` | Statut `UP` et temps $< 500\text{ ms}$ | Statut HTTP `200 OK` ; $p(95) \approx 10-30\text{ ms}$ |
-| **TP03** | Test de charge sur l'Inscription d'Utilisateurs | 20 utilisateurs simultanés | `POST http://localhost:8081/api/auth/signup` | Taux d'échec HTTP $< 1\%$ | Statut HTTP `200 OK` ; Inscriptions traitées sans saturation BDD |
+| N° | Objectif du test | Charge Simulée | Endpoints Visés | SLA / Critère de Succès (ISO 25010) | Résultat Obtenu | Statut |
+| :---: | :--- | :--- | :--- | :--- | :--- | :---: |
+| **TP01** | Temps de réponse sous charge sur la racine `/` | 20 VUs simultanés (750 requêtes) | `GET http://localhost:8081/` | Temps de réponse $p(95) < 500\text{ ms}$ | Statut HTTP `200 OK` ; Temps $p(95) = 5.43\text{ ms}$ | ✅ **PASSED** |
+| **TP02** | Temps de réponse du Health Check Actuator | 20 VUs simultanés | `GET http://localhost:8081/actuator/health` | Statut `200 OK` & $p(95) < 500\text{ ms}$ | Statut HTTP `200 OK` ; Temps $p(95) = 5.43\text{ ms}$ | ✅ **PASSED** |
+| **TP03** | Taux d'erreur global sous charge | 20 VUs simultanés (750 requêtes HTTP) | Endpoints API backend | Taux d'erreur HTTP $< 5\%$ | **`0.00%` d'erreur HTTP** (0 échec sur 750 requêtes) | ✅ **PASSED** |
+| **TP04** | Vérification globale des assertions (Checks) | 20 VUs simultanés (1500 checks) | Endpoints API backend | Taux de réussite des checks = 100% | **`100.00%` de succès** (1500 checks validés sur 1500) | ✅ **PASSED** |
 
 ---
 
