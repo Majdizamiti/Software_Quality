@@ -43,3 +43,9 @@ frontend/playwright-report/
 frontend/test-results/
 test-results/
 .sonar/
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

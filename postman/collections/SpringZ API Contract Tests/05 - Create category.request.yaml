@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/api/categories"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: json
+  content: |-
+    {
+      "title": "{{categoryTitle}}",
+      "description": "Created by Postman contract test"
+    }
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('categoryTitle', `Postman QA ${pm.collectionVariables.get('runId')}`);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Create category returns HTTP 201', function () { pm.response.to.have.status(201); });
+      pm.test('Create category returns id, title, and description', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('number');
+        pm.expect(body.title).to.eql(pm.collectionVariables.get('categoryTitle'));
+        pm.expect(body.description).to.eql('Created by Postman contract test');
+        pm.collectionVariables.set('categoryId', body.id);
+      });
+    language: text/javascript
+order: 5000

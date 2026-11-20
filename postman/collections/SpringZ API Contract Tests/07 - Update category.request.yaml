@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/api/categories/{{categoryId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: json
+  content: |-
+    {
+      "title": "{{updatedCategoryTitle}}",
+      "description": "Updated by Postman contract test"
+    }
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('updatedCategoryTitle', `Postman QA Updated ${pm.collectionVariables.get('runId')}`);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Update category returns HTTP 200', function () { pm.response.to.have.status(200); });
+      pm.test('Updated category keeps its id and returns updated fields', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.eql(Number(pm.collectionVariables.get('categoryId')));
+        pm.expect(body.title).to.eql(pm.collectionVariables.get('updatedCategoryTitle'));
+        pm.expect(body.description).to.eql('Updated by Postman contract test');
+      });
+    language: text/javascript
+order: 7000

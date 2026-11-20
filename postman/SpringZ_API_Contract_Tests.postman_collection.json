@@ -1,0 +1,305 @@
+{
+  "info": {
+    "_postman_id": "e7ae5a71-69f4-4ab0-91fc-c7b5d10409e6",
+    "name": "SpringZ API Contract Tests",
+    "description": "Sequential Postman contract checks for auth and category CRUD. Run against a disposable test database.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Sign up",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = Date.now().toString();",
+              "pm.collectionVariables.set('runId', runId);",
+              "pm.collectionVariables.set('testEmail', `postman.${runId}@example.com`);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Signup returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Signup response has the expected message shape', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body).to.have.property('message', 'User registered successfully');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Contract {{runId}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass123!\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/auth/signup"
+      }
+    },
+    {
+      "name": "02 - Sign in",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Sign in returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Sign in returns the JWT response fields', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+              "  pm.expect(body.id).to.be.a('number');",
+              "  pm.expect(body.email).to.eql(pm.collectionVariables.get('testEmail'));",
+              "  pm.collectionVariables.set('token', body.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass123!\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/auth/signin"
+      }
+    },
+    {
+      "name": "03 - Categories reject requests without a token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Protected categories API returns HTTP 401 without a token', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "auth": { "type": "noauth" },
+        "url": "{{baseUrl}}/api/categories"
+      }
+    },
+    {
+      "name": "04 - List categories",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('List categories returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('List categories returns a JSON array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/categories"
+      }
+    },
+    {
+      "name": "05 - Create category",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('categoryTitle', `Postman QA ${pm.collectionVariables.get('runId')}`);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create category returns HTTP 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('Create category returns id, title, and description', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.id).to.be.a('number');",
+              "  pm.expect(body.title).to.eql(pm.collectionVariables.get('categoryTitle'));",
+              "  pm.expect(body.description).to.eql('Created by Postman contract test');",
+              "  pm.collectionVariables.set('categoryId', body.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"{{categoryTitle}}\",\n  \"description\": \"Created by Postman contract test\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/categories"
+      }
+    },
+    {
+      "name": "06 - Read created category",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Read category returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Category response matches the contract', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.id).to.eql(Number(pm.collectionVariables.get('categoryId')));",
+              "  pm.expect(body.title).to.eql(pm.collectionVariables.get('categoryTitle'));",
+              "  pm.expect(body).to.have.property('description');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/categories/{{categoryId}}"
+      }
+    },
+    {
+      "name": "07 - Update category",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"{{updatedCategoryTitle}}\",\n  \"description\": \"Updated by Postman contract test\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/categories/{{categoryId}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('updatedCategoryTitle', `Postman QA Updated ${pm.collectionVariables.get('runId')}`);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Update category returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Updated category keeps its id and returns updated fields', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.id).to.eql(Number(pm.collectionVariables.get('categoryId')));",
+              "  pm.expect(body.title).to.eql(pm.collectionVariables.get('updatedCategoryTitle'));",
+              "  pm.expect(body.description).to.eql('Updated by Postman contract test');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Delete category",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Delete category returns HTTP 204', function () { pm.response.to.have.status(204); });",
+              "pm.test('Delete category has an empty response body', function () { pm.expect(pm.response.text()).to.eql(''); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/categories/{{categoryId}}"
+      }
+    },
+    {
+      "name": "09 - Deleted category returns 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Deleted category returns HTTP 404', function () { pm.response.to.have.status(404); });",
+              "pm.test('Error response has the documented fields', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.status).to.eql(404);",
+              "  pm.expect(body.error).to.be.a('string');",
+              "  pm.expect(body.message).to.be.a('string');",
+              "  pm.expect(body.path).to.eql(`/api/categories/${pm.collectionVariables.get('categoryId')}`);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/categories/{{categoryId}}"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "runId", "value": "" },
+    { "key": "testEmail", "value": "" },
+    { "key": "token", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "categoryTitle", "value": "" },
+    { "key": "updatedCategoryTitle", "value": "" }
+  ]
+}

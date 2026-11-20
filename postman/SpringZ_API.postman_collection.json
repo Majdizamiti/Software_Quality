@@ -14,36 +14,84 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"API User\",\n  \"email\": \"api.user@example.com\",\n  \"password\": \"secret\"\n}"
+              "raw": "{\n  \"name\": \"API User {{runId}}\",\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"secret\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/signup",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auth", "signup"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const runId = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', runId);",
+                  "pm.collectionVariables.set('signupEmail', 'api.user.' + runId + '@example.com');",
+                  "['token','categoryId','subcategoryId','providerId','customerId','userId','productId','orderId'].forEach(function (key) { pm.collectionVariables.set(key, ''); });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Signup returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Signup message matches the expected value', function () { pm.expect(pm.response.json().message).to.eql('User registered successfully'); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Signin",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"api.user@example.com\",\n  \"password\": \"secret\"\n}"
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"secret\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/signin",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auth", "signin"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
             }
           },
           "event": [
@@ -52,10 +100,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "var json = pm.response.json();",
-                  "if (json && json.token) {",
-                  "  pm.collectionVariables.set('token', json.token);",
-                  "}"
+                  "pm.test('Signin returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Signin returns expected JWT response data', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.type).to.eql('Bearer');",
+                  "  pm.expect(body.id).to.be.a('number');",
+                  "  pm.expect(body.email).to.eql(pm.collectionVariables.get('signupEmail'));",
+                  "  pm.collectionVariables.set('token', body.token);",
+                  "});"
                 ]
               }
             }
@@ -66,6 +119,64 @@
     {
       "name": "Categories",
       "item": [
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Electronics {{runId}} {{runId}}\",\n  \"description\": \"All electronics\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('title');",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"], 'title matches request data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches request data');",
+                  "  pm.collectionVariables.set('categoryId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('CategoriesExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List categories",
           "request": {
@@ -90,7 +201,27 @@
                 "categories"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('CategoriesExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('categoryId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"]);",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get category by id",
@@ -117,41 +248,28 @@
                 "{{categoryId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create category",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('CategoriesExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('categoryId')));",
+                  "  pm.expect(actual).to.have.property('title');",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"], 'title matches expected data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Electronics\",\n  \"description\": \"All electronics\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/categories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "categories"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update category",
@@ -173,7 +291,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Electronics (Updated)\",\n  \"description\": \"Updated description\"\n}"
+              "raw": "{\n  \"title\": \"Electronics Updated {{runId}}\",\n  \"description\": \"Updated description\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
@@ -186,13 +304,46 @@
                 "{{categoryId}}"
               ]
             }
-          }
-        },
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('title');",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"], 'title matches request data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches request data');",
+                  "  pm.collectionVariables.set('categoryId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('CategoriesExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Subcategories",
+      "item": [
         {
-          "name": "Delete category",
+          "name": "Create subcategory",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -202,24 +353,48 @@
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Laptops {{runId}} {{runId}}\",\n  \"description\": \"Laptop subcategory\",\n  \"categoryId\": {{categoryId}}\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "raw": "{{baseUrl}}/api/subcategories",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "categories",
-                "{{categoryId}}"
+                "subcategories"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Subcategories",
-      "item": [
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('title');",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"], 'title matches request data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches request data');",
+                  "  pm.expect(actual).to.have.property('categoryId');",
+                  "  pm.expect(actual[\"categoryId\"]).to.eql(expected[\"categoryId\"], 'categoryId matches request data');",
+                  "  pm.collectionVariables.set('subcategoryId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('SubcategoriesExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List subcategories",
           "request": {
@@ -244,7 +419,28 @@
                 "subcategories"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('SubcategoriesExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('subcategoryId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"]);",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"]);",
+                  "  pm.expect(actual[\"categoryId\"]).to.eql(expected[\"categoryId\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get subcategory by id",
@@ -271,41 +467,30 @@
                 "{{subcategoryId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create subcategory",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('SubcategoriesExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('subcategoryId')));",
+                  "  pm.expect(actual).to.have.property('title');",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"], 'title matches expected data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches expected data');",
+                  "  pm.expect(actual).to.have.property('categoryId');",
+                  "  pm.expect(actual[\"categoryId\"]).to.eql(expected[\"categoryId\"], 'categoryId matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Laptops\",\n  \"description\": \"Laptop subcategory\",\n  \"categoryId\": {{categoryId}}\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/subcategories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "subcategories"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update subcategory",
@@ -327,7 +512,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Laptops (Updated)\",\n  \"description\": \"Updated\",\n  \"categoryId\": {{categoryId}}\n}"
+              "raw": "{\n  \"title\": \"Laptops Updated {{runId}}\",\n  \"description\": \"Updated\",\n  \"categoryId\": {{categoryId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/subcategories/{{subcategoryId}}",
@@ -340,13 +525,48 @@
                 "{{subcategoryId}}"
               ]
             }
-          }
-        },
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('title');",
+                  "  pm.expect(actual[\"title\"]).to.eql(expected[\"title\"], 'title matches request data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches request data');",
+                  "  pm.expect(actual).to.have.property('categoryId');",
+                  "  pm.expect(actual[\"categoryId\"]).to.eql(expected[\"categoryId\"], 'categoryId matches request data');",
+                  "  pm.collectionVariables.set('subcategoryId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('SubcategoriesExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Providers",
+      "item": [
         {
-          "name": "Delete subcategory",
+          "name": "Create provider",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -356,24 +576,59 @@
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Provider {{runId}}\",\n  \"salary\": 5000,\n  \"phone\": \"123456\",\n  \"age\": 30,\n  \"email\": \"provider.{{runId}}@example.com\",\n  \"password\": \"secret\",\n  \"matricule\": \"MAT-{{runId}}\",\n  \"service\": \"Sales\",\n  \"company\": \"MyCompany\"\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/subcategories/{{subcategoryId}}",
+              "raw": "{{baseUrl}}/api/providers",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "subcategories",
-                "{{subcategoryId}}"
+                "providers"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Providers",
-      "item": [
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches request data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches request data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches request data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches request data');",
+                  "  pm.expect(actual).to.have.property('matricule');",
+                  "  pm.expect(actual[\"matricule\"]).to.eql(expected[\"matricule\"], 'matricule matches request data');",
+                  "  pm.expect(actual).to.have.property('service');",
+                  "  pm.expect(actual[\"service\"]).to.eql(expected[\"service\"], 'service matches request data');",
+                  "  pm.expect(actual).to.have.property('company');",
+                  "  pm.expect(actual[\"company\"]).to.eql(expected[\"company\"], 'company matches request data');",
+                  "  pm.expect(actual).not.to.have.property('password');",
+                  "  pm.collectionVariables.set('providerId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('ProvidersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List providers",
           "request": {
@@ -398,7 +653,33 @@
                 "providers"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('ProvidersExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('providerId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"]);",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"]);",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"]);",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"]);",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"]);",
+                  "  pm.expect(actual[\"matricule\"]).to.eql(expected[\"matricule\"]);",
+                  "  pm.expect(actual[\"service\"]).to.eql(expected[\"service\"]);",
+                  "  pm.expect(actual[\"company\"]).to.eql(expected[\"company\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get provider by id",
@@ -425,41 +706,40 @@
                 "{{providerId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create provider",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('ProvidersExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('providerId')));",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches expected data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches expected data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches expected data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches expected data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches expected data');",
+                  "  pm.expect(actual).to.have.property('matricule');",
+                  "  pm.expect(actual[\"matricule\"]).to.eql(expected[\"matricule\"], 'matricule matches expected data');",
+                  "  pm.expect(actual).to.have.property('service');",
+                  "  pm.expect(actual[\"service\"]).to.eql(expected[\"service\"], 'service matches expected data');",
+                  "  pm.expect(actual).to.have.property('company');",
+                  "  pm.expect(actual[\"company\"]).to.eql(expected[\"company\"], 'company matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Provider One\",\n  \"salary\": 5000,\n  \"phone\": \"123456\",\n  \"age\": 30,\n  \"email\": \"provider1@example.com\",\n  \"password\": \"secret\",\n  \"matricule\": \"MAT-001\",\n  \"service\": \"Sales\",\n  \"company\": \"MyCompany\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/providers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "providers"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update provider",
@@ -481,7 +761,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Provider One (Updated)\",\n  \"salary\": 5200,\n  \"phone\": \"123456\",\n  \"age\": 31,\n  \"email\": \"provider1@example.com\",\n  \"password\": \"secret\",\n  \"matricule\": \"MAT-001\",\n  \"service\": \"Sales\",\n  \"company\": \"MyCompany\"\n}"
+              "raw": "{\n  \"name\": \"Provider Updated {{runId}}\",\n  \"salary\": 5200,\n  \"phone\": \"123456\",\n  \"age\": 31,\n  \"email\": \"provider.{{runId}}@example.com\",\n  \"password\": \"secret\",\n  \"matricule\": \"MAT-{{runId}}\",\n  \"service\": \"Sales\",\n  \"company\": \"MyCompany\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/providers/{{providerId}}",
@@ -494,13 +774,59 @@
                 "{{providerId}}"
               ]
             }
-          }
-        },
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches request data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches request data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches request data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches request data');",
+                  "  pm.expect(actual).to.have.property('matricule');",
+                  "  pm.expect(actual[\"matricule\"]).to.eql(expected[\"matricule\"], 'matricule matches request data');",
+                  "  pm.expect(actual).to.have.property('service');",
+                  "  pm.expect(actual[\"service\"]).to.eql(expected[\"service\"], 'service matches request data');",
+                  "  pm.expect(actual).to.have.property('company');",
+                  "  pm.expect(actual[\"company\"]).to.eql(expected[\"company\"], 'company matches request data');",
+                  "  pm.expect(actual).not.to.have.property('password');",
+                  "  pm.collectionVariables.set('providerId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('ProvidersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
         {
-          "name": "Delete provider",
+          "name": "Create customer",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -510,24 +836,57 @@
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Customer {{runId}}\",\n  \"salary\": 2000,\n  \"phone\": \"999\",\n  \"age\": 25,\n  \"email\": \"customer.{{runId}}@example.com\",\n  \"password\": \"secret\",\n  \"address\": \"Street 1\",\n  \"city\": \"City\"\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/providers/{{providerId}}",
+              "raw": "{{baseUrl}}/api/customers",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "providers",
-                "{{providerId}}"
+                "customers"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Customers",
-      "item": [
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches request data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches request data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches request data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches request data');",
+                  "  pm.expect(actual).to.have.property('address');",
+                  "  pm.expect(actual[\"address\"]).to.eql(expected[\"address\"], 'address matches request data');",
+                  "  pm.expect(actual).to.have.property('city');",
+                  "  pm.expect(actual[\"city\"]).to.eql(expected[\"city\"], 'city matches request data');",
+                  "  pm.expect(actual).not.to.have.property('password');",
+                  "  pm.collectionVariables.set('customerId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('CustomersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List customers",
           "request": {
@@ -552,7 +911,32 @@
                 "customers"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('CustomersExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('customerId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"]);",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"]);",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"]);",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"]);",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"]);",
+                  "  pm.expect(actual[\"address\"]).to.eql(expected[\"address\"]);",
+                  "  pm.expect(actual[\"city\"]).to.eql(expected[\"city\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get customer by id",
@@ -579,41 +963,38 @@
                 "{{customerId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create customer",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('CustomersExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('customerId')));",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches expected data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches expected data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches expected data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches expected data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches expected data');",
+                  "  pm.expect(actual).to.have.property('address');",
+                  "  pm.expect(actual[\"address\"]).to.eql(expected[\"address\"], 'address matches expected data');",
+                  "  pm.expect(actual).to.have.property('city');",
+                  "  pm.expect(actual[\"city\"]).to.eql(expected[\"city\"], 'city matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Customer One\",\n  \"salary\": 2000,\n  \"phone\": \"999\",\n  \"age\": 25,\n  \"email\": \"customer1@example.com\",\n  \"password\": \"secret\",\n  \"address\": \"Street 1\",\n  \"city\": \"City\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/customers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update customer",
@@ -635,7 +1016,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Customer One (Updated)\",\n  \"salary\": 2100,\n  \"phone\": \"999\",\n  \"age\": 26,\n  \"email\": \"customer1@example.com\",\n  \"password\": \"secret\",\n  \"address\": \"Street 1\",\n  \"city\": \"City\"\n}"
+              "raw": "{\n  \"name\": \"Customer Updated {{runId}}\",\n  \"salary\": 2100,\n  \"phone\": \"999\",\n  \"age\": 26,\n  \"email\": \"customer.{{runId}}@example.com\",\n  \"password\": \"secret\",\n  \"address\": \"Street 1\",\n  \"city\": \"City\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/customers/{{customerId}}",
@@ -648,13 +1029,57 @@
                 "{{customerId}}"
               ]
             }
-          }
-        },
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches request data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches request data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches request data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches request data');",
+                  "  pm.expect(actual).to.have.property('address');",
+                  "  pm.expect(actual[\"address\"]).to.eql(expected[\"address\"], 'address matches request data');",
+                  "  pm.expect(actual).to.have.property('city');",
+                  "  pm.expect(actual[\"city\"]).to.eql(expected[\"city\"], 'city matches request data');",
+                  "  pm.expect(actual).not.to.have.property('password');",
+                  "  pm.collectionVariables.set('customerId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('CustomersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
         {
-          "name": "Delete customer",
+          "name": "Create user",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -664,24 +1089,53 @@
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User {{runId}}\",\n  \"salary\": 1000,\n  \"phone\": \"555\",\n  \"age\": 20,\n  \"email\": \"user.{{runId}}@example.com\",\n  \"password\": \"secret\"\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "raw": "{{baseUrl}}/api/users",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "customers",
-                "{{customerId}}"
+                "users"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Users",
-      "item": [
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches request data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches request data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches request data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches request data');",
+                  "  pm.expect(actual).not.to.have.property('password');",
+                  "  pm.collectionVariables.set('userId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('UsersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List users",
           "request": {
@@ -706,7 +1160,30 @@
                 "users"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('UsersExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('userId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"]);",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"]);",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"]);",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"]);",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get user by id",
@@ -733,41 +1210,34 @@
                 "{{userId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create user",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('UsersExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('userId')));",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches expected data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches expected data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches expected data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches expected data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"User One\",\n  \"salary\": 1000,\n  \"phone\": \"555\",\n  \"age\": 20,\n  \"email\": \"user1@example.com\",\n  \"password\": \"secret\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "users"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update user",
@@ -789,7 +1259,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"User One (Updated)\",\n  \"salary\": 1200,\n  \"phone\": \"555\",\n  \"age\": 21,\n  \"email\": \"user1@example.com\",\n  \"password\": \"secret\"\n}"
+              "raw": "{\n  \"name\": \"User Updated {{runId}}\",\n  \"salary\": 1200,\n  \"phone\": \"555\",\n  \"age\": 21,\n  \"email\": \"user.{{runId}}@example.com\",\n  \"password\": \"secret\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/users/{{userId}}",
@@ -802,13 +1272,53 @@
                 "{{userId}}"
               ]
             }
-          }
-        },
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('salary');",
+                  "  pm.expect(actual[\"salary\"]).to.eql(expected[\"salary\"], 'salary matches request data');",
+                  "  pm.expect(actual).to.have.property('phone');",
+                  "  pm.expect(actual[\"phone\"]).to.eql(expected[\"phone\"], 'phone matches request data');",
+                  "  pm.expect(actual).to.have.property('age');",
+                  "  pm.expect(actual[\"age\"]).to.eql(expected[\"age\"], 'age matches request data');",
+                  "  pm.expect(actual).to.have.property('email');",
+                  "  pm.expect(actual[\"email\"]).to.eql(expected[\"email\"], 'email matches request data');",
+                  "  pm.expect(actual).not.to.have.property('password');",
+                  "  pm.collectionVariables.set('userId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('UsersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
         {
-          "name": "Delete user",
+          "name": "Create product",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -818,24 +1328,52 @@
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Keyboard {{runId}} {{runId}}\",\n  \"price\": 49.99,\n  \"description\": \"USB\",\n  \"providerId\": {{providerId}},\n  \"subcategoryId\": {{subcategoryId}}\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "raw": "{{baseUrl}}/api/products",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "users",
-                "{{userId}}"
+                "products"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Products",
-      "item": [
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('price');",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"], 'price matches request data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches request data');",
+                  "  pm.expect(actual).to.have.property('providerId');",
+                  "  pm.expect(actual[\"providerId\"]).to.eql(expected[\"providerId\"], 'providerId matches request data');",
+                  "  pm.expect(actual).to.have.property('subcategoryId');",
+                  "  pm.expect(actual[\"subcategoryId\"]).to.eql(expected[\"subcategoryId\"], 'subcategoryId matches request data');",
+                  "  pm.collectionVariables.set('productId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('ProductsExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List products",
           "request": {
@@ -860,7 +1398,30 @@
                 "products"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('ProductsExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('productId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"]);",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"]);",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"]);",
+                  "  pm.expect(actual[\"providerId\"]).to.eql(expected[\"providerId\"]);",
+                  "  pm.expect(actual[\"subcategoryId\"]).to.eql(expected[\"subcategoryId\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get product by id",
@@ -887,41 +1448,34 @@
                 "{{productId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create product",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('ProductsExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('productId')));",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches expected data');",
+                  "  pm.expect(actual).to.have.property('price');",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"], 'price matches expected data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches expected data');",
+                  "  pm.expect(actual).to.have.property('providerId');",
+                  "  pm.expect(actual[\"providerId\"]).to.eql(expected[\"providerId\"], 'providerId matches expected data');",
+                  "  pm.expect(actual).to.have.property('subcategoryId');",
+                  "  pm.expect(actual[\"subcategoryId\"]).to.eql(expected[\"subcategoryId\"], 'subcategoryId matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Keyboard\",\n  \"price\": 49.99,\n  \"description\": \"USB\",\n  \"providerId\": {{providerId}},\n  \"subcategoryId\": {{subcategoryId}}\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "products"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update product",
@@ -943,7 +1497,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Keyboard (Updated)\",\n  \"price\": 59.99,\n  \"description\": \"USB, mechanical\",\n  \"providerId\": {{providerId}},\n  \"subcategoryId\": {{subcategoryId}}\n}"
+              "raw": "{\n  \"name\": \"Keyboard Updated {{runId}}\",\n  \"price\": 59.99,\n  \"description\": \"USB, mechanical\",\n  \"providerId\": {{providerId}},\n  \"subcategoryId\": {{subcategoryId}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/products/{{productId}}",
@@ -956,13 +1510,52 @@
                 "{{productId}}"
               ]
             }
-          }
-        },
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('name');",
+                  "  pm.expect(actual[\"name\"]).to.eql(expected[\"name\"], 'name matches request data');",
+                  "  pm.expect(actual).to.have.property('price');",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"], 'price matches request data');",
+                  "  pm.expect(actual).to.have.property('description');",
+                  "  pm.expect(actual[\"description\"]).to.eql(expected[\"description\"], 'description matches request data');",
+                  "  pm.expect(actual).to.have.property('providerId');",
+                  "  pm.expect(actual[\"providerId\"]).to.eql(expected[\"providerId\"], 'providerId matches request data');",
+                  "  pm.expect(actual).to.have.property('subcategoryId');",
+                  "  pm.expect(actual[\"subcategoryId\"]).to.eql(expected[\"subcategoryId\"], 'subcategoryId matches request data');",
+                  "  pm.collectionVariables.set('productId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('ProductsExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
         {
-          "name": "Delete product",
+          "name": "Create order",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -972,24 +1565,52 @@
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"ORD-{{runId}}\",\n  \"price\": 100.0,\n  \"date\": \"2025-12-17\",\n  \"customerId\": {{customerId}},\n  \"productIds\": [{{productId}}]\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "raw": "{{baseUrl}}/api/orders",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "products",
-                "{{productId}}"
+                "orders"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Orders",
-      "item": [
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create returns HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Create response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('ref');",
+                  "  pm.expect(actual[\"ref\"]).to.eql(expected[\"ref\"], 'ref matches request data');",
+                  "  pm.expect(actual).to.have.property('price');",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"], 'price matches request data');",
+                  "  pm.expect(actual).to.have.property('date');",
+                  "  pm.expect(actual[\"date\"]).to.eql(expected[\"date\"], 'date matches request data');",
+                  "  pm.expect(actual).to.have.property('customerId');",
+                  "  pm.expect(actual[\"customerId\"]).to.eql(expected[\"customerId\"], 'customerId matches request data');",
+                  "  pm.expect(actual).to.have.property('productIds');",
+                  "  pm.expect(actual[\"productIds\"]).to.eql(expected[\"productIds\"], 'productIds matches request data');",
+                  "  pm.collectionVariables.set('orderId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('OrdersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "List orders",
           "request": {
@@ -1014,7 +1635,30 @@
                 "orders"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List returns HTTP 200 and expected data', function () {",
+                  "  const records = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(records).to.be.an('array');",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('OrdersExpected'));",
+                  "  const actual = records.find(function (item) { return item.id === Number(pm.collectionVariables.get('orderId')); });",
+                  "  pm.expect(actual, 'list contains the created record').to.exist;",
+                  "  pm.expect(actual[\"ref\"]).to.eql(expected[\"ref\"]);",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"]);",
+                  "  pm.expect(actual[\"date\"]).to.eql(expected[\"date\"]);",
+                  "  pm.expect(actual[\"customerId\"]).to.eql(expected[\"customerId\"]);",
+                  "  pm.expect(actual[\"productIds\"]).to.eql(expected[\"productIds\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get order by id",
@@ -1041,41 +1685,34 @@
                 "{{orderId}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Create order",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Read by id returns HTTP 200 and expected data', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const expected = JSON.parse(pm.collectionVariables.get('OrdersExpected'));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.eql(Number(pm.collectionVariables.get('orderId')));",
+                  "  pm.expect(actual).to.have.property('ref');",
+                  "  pm.expect(actual[\"ref\"]).to.eql(expected[\"ref\"], 'ref matches expected data');",
+                  "  pm.expect(actual).to.have.property('price');",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"], 'price matches expected data');",
+                  "  pm.expect(actual).to.have.property('date');",
+                  "  pm.expect(actual[\"date\"]).to.eql(expected[\"date\"], 'date matches expected data');",
+                  "  pm.expect(actual).to.have.property('customerId');",
+                  "  pm.expect(actual[\"customerId\"]).to.eql(expected[\"customerId\"], 'customerId matches expected data');",
+                  "  pm.expect(actual).to.have.property('productIds');",
+                  "  pm.expect(actual[\"productIds\"]).to.eql(expected[\"productIds\"], 'productIds matches expected data');",
+                  "});"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ref\": \"ORD-001\",\n  \"price\": 100.0,\n  \"date\": \"2025-12-17\",\n  \"customerId\": {{customerId}},\n  \"productIds\": [{{productId}}]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "orders"
-              ]
             }
-          }
+          ]
         },
         {
           "name": "Update order",
@@ -1097,7 +1734,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ref\": \"ORD-001 (Updated)\",\n  \"price\": 120.0,\n  \"date\": \"2025-12-17\",\n  \"customerId\": {{customerId}},\n  \"productIds\": [{{productId}}]\n}"
+              "raw": "{\n  \"ref\": \"ORD-{{runId}}-UPDATED\",\n  \"price\": 120.0,\n  \"date\": \"2025-12-17\",\n  \"customerId\": {{customerId}},\n  \"productIds\": [{{productId}}]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/orders/{{orderId}}",
@@ -1110,8 +1747,111 @@
                 "{{orderId}}"
               ]
             }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Update response values match the submitted data', function () {",
+                  "  const expected = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "  const actual = pm.response.json();",
+                  "  pm.expect(actual).to.be.an('object');",
+                  "  pm.expect(actual.id).to.be.a('number');",
+                  "  pm.expect(actual).to.have.property('ref');",
+                  "  pm.expect(actual[\"ref\"]).to.eql(expected[\"ref\"], 'ref matches request data');",
+                  "  pm.expect(actual).to.have.property('price');",
+                  "  pm.expect(actual[\"price\"]).to.eql(expected[\"price\"], 'price matches request data');",
+                  "  pm.expect(actual).to.have.property('date');",
+                  "  pm.expect(actual[\"date\"]).to.eql(expected[\"date\"], 'date matches request data');",
+                  "  pm.expect(actual).to.have.property('customerId');",
+                  "  pm.expect(actual[\"customerId\"]).to.eql(expected[\"customerId\"], 'customerId matches request data');",
+                  "  pm.expect(actual).to.have.property('productIds');",
+                  "  pm.expect(actual[\"productIds\"]).to.eql(expected[\"productIds\"], 'productIds matches request data');",
+                  "  pm.collectionVariables.set('orderId', actual.id.toString());",
+                  "  expected.id = actual.id;",
+                  "  pm.collectionVariables.set('OrdersExpected', JSON.stringify(expected));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "System Info",
+      "item": [
+        {
+          "name": "Get API information",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Root endpoint returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Root endpoint returns the API information contract', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('UP');",
+                  "  pm.expect(body.application).to.eql('SpringZ E-Commerce REST API');",
+                  "  pm.expect(body.message).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.endpoints).to.be.an('object');",
+                  "  pm.expect(body.endpoints).to.have.property('auth_signup', 'POST /api/auth/signup');",
+                  "  pm.expect(body.endpoints).to.have.property('health', 'GET /actuator/health');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/"
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Get Actuator health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Health endpoint returns HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Health response reports UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/actuator/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup - DELETE requests",
+      "item": [
         {
           "name": "Delete order",
           "request": {
@@ -1137,7 +1877,267 @@
                 "{{orderId}}"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete subcategory",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subcategories/{{subcategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subcategories",
+                "{{subcategoryId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete provider",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/providers/{{providerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "providers",
+                "{{providerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete customer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "{{categoryId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delete returns HTTP 204 and an empty body', function () {",
+                  "  pm.expect(pm.response.code).to.eql(204);",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -1145,7 +2145,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080",
+      "value": "http://localhost:8081",
       "type": "string"
     },
     {
@@ -1186,6 +2186,16 @@
     {
       "key": "orderId",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "signupEmail",
+      "value": "",
       "type": "string"
     }
   ]

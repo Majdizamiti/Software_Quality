@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/categories/{{categoryId}}"
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Deleted category returns HTTP 404', function () { pm.response.to.have.status(404); });
+      pm.test('Error response has the documented fields', function () {
+        const body = pm.response.json();
+        pm.expect(body.status).to.eql(404);
+        pm.expect(body.error).to.be.a('string');
+        pm.expect(body.message).to.be.a('string');
+        pm.expect(body.path).to.eql(`/api/categories/${pm.collectionVariables.get('categoryId')}`);
+      });
+    language: text/javascript
+order: 9000

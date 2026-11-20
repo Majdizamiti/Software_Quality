@@ -1,0 +1,10 @@
+$kind: collection
+description: Sequential Postman contract checks for auth and category CRUD. Run against a disposable test database.
+variables:
+  baseUrl: http://localhost:8081
+  runId: ""
+  testEmail: ""
+  token: ""
+  categoryId: ""
+  categoryTitle: ""
+  updatedCategoryTitle: ""

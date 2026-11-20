@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/categories/{{categoryId}}"
+method: DELETE
+headers:
+  Accept: application/json
+  Authorization: Bearer {{token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Delete category returns HTTP 204', function () { pm.response.to.have.status(204); });
+      pm.test('Delete category has an empty response body', function () { pm.expect(pm.response.text()).to.eql(''); });
+    language: text/javascript
+order: 8000

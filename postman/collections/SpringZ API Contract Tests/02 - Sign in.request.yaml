@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/signin"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{testEmail}}",
+      "password": "TestPass123!"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Sign in returns HTTP 200', function () { pm.response.to.have.status(200); });
+      pm.test('Sign in returns the JWT response fields', function () {
+        const body = pm.response.json();
+        pm.expect(body.token).to.be.a('string').and.not.empty;
+        pm.expect(body.id).to.be.a('number');
+        pm.expect(body.email).to.eql(pm.collectionVariables.get('testEmail'));
+        pm.collectionVariables.set('token', body.token);
+      });
+    language: text/javascript
+order: 2000

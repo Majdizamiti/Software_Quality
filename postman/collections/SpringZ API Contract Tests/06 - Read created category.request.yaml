@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/categories/{{categoryId}}"
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Read category returns HTTP 200', function () { pm.response.to.have.status(200); });
+      pm.test('Category response matches the contract', function () {
+        const body = pm.response.json();
+        pm.expect(body.id).to.eql(Number(pm.collectionVariables.get('categoryId')));
+        pm.expect(body.title).to.eql(pm.collectionVariables.get('categoryTitle'));
+        pm.expect(body).to.have.property('description');
+      });
+    language: text/javascript
+order: 6000

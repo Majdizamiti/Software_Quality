@@ -1,6 +1,10 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+// Set BASE_URL when k6 runs in Docker, for example:
+// BASE_URL=http://host.docker.internal:8081
+const baseUrl = __ENV.BASE_URL || 'http://localhost:8081';
+
 export const options = {
   stages: [
     { duration: '10s', target: 10 }, // Ramp-up to 10 Virtual Users
@@ -15,14 +19,14 @@ export const options = {
 
 export default function () {
   // 1. Test Root Info Endpoint
-  const resRoot = http.get('http://localhost:8081/');
+  const resRoot = http.get(`${baseUrl}/`);
   check(resRoot, {
     'root status is 200': (r) => r.status === 200,
-    'root response time < 500ms': (r) => r.timings.duration < 500,
+    'root response time < 500ms': (r) => r.status === 200 && r.timings.duration < 500,
   });
 
   // 2. Test Actuator Health Endpoint
-  const resHealth = http.get('http://localhost:8081/actuator/health');
+  const resHealth = http.get(`${baseUrl}/actuator/health`);
   check(resHealth, {
     'health status is 200': (r) => r.status === 200,
   });
@@ -41,10 +45,10 @@ export default function () {
     },
   };
 
-  const resSignup = http.post('http://localhost:8081/api/auth/signup', signupPayload, params);
+  const resSignup = http.post(`${baseUrl}/api/auth/signup`, signupPayload, params);
   check(resSignup, {
     'signup status is 200': (r) => r.status === 200,
-    'signup response time < 500ms': (r) => r.timings.duration < 500,
+    'signup response time < 500ms': (r) => r.status === 200 && r.timings.duration < 500,
   });
 
   sleep(1);
