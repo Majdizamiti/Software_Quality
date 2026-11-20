@@ -17,13 +17,13 @@ npm install
 npm run dev
 ```
 
-The frontend expects the backend API at `http://localhost:8080/api`.
+The frontend expects the backend API at `http://localhost:8081/api`.
 If your backend runs elsewhere, update `src/api.js`.
 
 PowerShell auth helper:
 
 ```powershell
-cd C:\Users\boub0\Desktop\hackathon\hackathon_Africana
+cd ..\backend
 .\scripts\get-jwt.ps1
 ```
 
